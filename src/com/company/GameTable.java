@@ -24,13 +24,13 @@ public class GameTable {
 
     }
 
-    public Boolean caseIsValid(int x, int y, char val){
+    public char CaseEval(int x, int y, char val){
         System.out.println("Checking case "+x+", "+y +" value: " + Values[x][y]);
 
         if (checkSquare(x,y,val) && checkColumn(x,y, val) && checkRow(x,y,val)){
-            return true;
+            return val;
         }
-        return false;
+        return '#';
     }
 
 
