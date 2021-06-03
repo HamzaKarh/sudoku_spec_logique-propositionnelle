@@ -23,6 +23,7 @@ public class Main {
             for (int j = 0; j < p.length; j++) {
                 System.out.println(Arrays.toString(p[j]));
             }
+            System.out.println("---------------------------------");
         }
 
     }

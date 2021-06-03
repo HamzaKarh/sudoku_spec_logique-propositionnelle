@@ -24,25 +24,25 @@ public class SolveObj {
         base_props.add(new Implies(two, new Not(new Or(one,three,four,five,six,seven,eight,nine))));
         three = new PropositionalVariable("3");
         base_props.add(three);
-        base_props.add(new Implies(three, new Not(new Or(two,one,four,five,six,seven,eight,nine))));
+        base_props.add(new Implies(three, new Not(new Or(one,two,four,five,six,seven,eight,nine))));
         four = new PropositionalVariable("4");
         base_props.add(four);
-        base_props.add(new Implies(four, new Not(new Or(one,three,two,five,six,seven,eight,nine))));
+        base_props.add(new Implies(four, new Not(new Or(one,two,three,five,six,seven,eight,nine))));
         five = new PropositionalVariable("5");
         base_props.add(five);
-        base_props.add(new Implies(five, new Not(new Or(one,three,four,two,six,seven,eight,nine))));
+        base_props.add(new Implies(five, new Not(new Or(one,two,three,four,six,seven,eight,nine))));
         six = new PropositionalVariable("6");
         base_props.add(six);
-        base_props.add(new Implies(six, new Not(new Or(one,three,four,five,two,seven,eight,nine))));
+        base_props.add(new Implies(six, new Not(new Or(one,two,three,four,five,seven,eight,nine))));
         seven = new PropositionalVariable("7");
         base_props.add(seven);
-        base_props.add(new Implies(seven, new Not(new Or(one,three,four,five,six,two,eight,nine))));
+        base_props.add(new Implies(seven, new Not(new Or(one,two,three,four,five,six,eight,nine))));
         eight = new PropositionalVariable("8");
         base_props.add(eight);
-        base_props.add(new Implies(eight, new Not(new Or(one,three,four,five,six,seven,two,nine))));
+        base_props.add(new Implies(eight, new Not(new Or(one,two,three,four,five,six,seven,nine))));
         nine = new PropositionalVariable("9");
         base_props.add(nine);
-        base_props.add(new Implies(nine, new Not(new Or(one,three,four,five,six,seven,eight,two))));
+        base_props.add(new Implies(nine, new Not(new Or(one,two,three,four,five,six,seven,eight))));
 
 
 
@@ -59,6 +59,11 @@ public class SolveObj {
                     addConstraintColumn(props, i , j , Values[i][j]);
                     addConstaintRow(props, i , j , Values[i][j]);
                 }
+            }
+        }
+        for(int j = 0; j<9; j++) {
+            for (int i = 0; i < 9; i++) {
+                System.out.println(BooleanFormula.toCnf(props[i][j]));
             }
         }
         ArrayList<int[][]> clauses = new ArrayList<int[][]>();
