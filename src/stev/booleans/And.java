@@ -35,6 +35,7 @@ public class And extends NaryConnective
 	public And(/*@ non_null @*/ BooleanFormula ... operands)
 	{
 		super(operands);
+
 	}
 
 	@Override

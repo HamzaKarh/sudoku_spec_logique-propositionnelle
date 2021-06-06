@@ -6,8 +6,7 @@ import java.util.Arrays;
 import java.util.Map;
 
 public class SchemaMain {
-    public static void main(String[] args)
-{
+    public static void main(String[] args){
     // We create the formula p | (!q & (r -> p)) | (q & s)
     PropositionalVariable p = new PropositionalVariable("p");
     PropositionalVariable q = new PropositionalVariable("q");
