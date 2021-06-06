@@ -8,279 +8,248 @@ import org.sat4j.specs.ISolver;
 import org.sat4j.specs.TimeoutException;
 import stev.booleans.*;
 
-import java.lang.reflect.Array;
-import java.sql.SQLOutput;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class SolveObj {
 
-    PropositionalVariable one;
-    PropositionalVariable two;
-    PropositionalVariable three;
-    PropositionalVariable four;
-    PropositionalVariable five;
-    PropositionalVariable six;
-    PropositionalVariable seven;
-    PropositionalVariable eight;
-    PropositionalVariable nine;
-    List<BooleanFormula> base_props;
-    BooleanFormula Rules;
+
+    public static ISolver solver;
+    static final int MAXVAR = 1000000;
+    static final int NBCLAUSES = 500000;
+    BooleanFormula rule_one;
+    BooleanFormula rule_two;
+    BooleanFormula rule_three;
+    BooleanFormula rule_four;
+    BooleanFormula rule_five;
+
+    BooleanFormula props[][][] = new BooleanFormula[9][9][9];
 
     public SolveObj() {
 //
-        one = new PropositionalVariable("1");
-        two = new PropositionalVariable("2");
-        three = new PropositionalVariable("3");
-        four = new PropositionalVariable("4");
-        five = new PropositionalVariable("5");
-        six = new PropositionalVariable("6");
-        seven = new PropositionalVariable("7");
-        eight = new PropositionalVariable("8");
-        nine = new PropositionalVariable("9");
-        base_props = List.of(
-            new Equivalence(one, new Not(new Or(two,three,four,five,six,seven,eight,nine))),
-            new Equivalence(two, new Not(new Or(one,three,four,five,six,seven,eight,nine))),
-            new Equivalence(three, new Not(new Or(one,two,four,five,six,seven,eight,nine))),
-            new Equivalence(four, new Not(new Or(one,two,three,five,six,seven,eight,nine))),
-            new Equivalence(five, new Not(new Or(one,two,three,four,six,seven,eight,nine))),
-            new Equivalence(six, new Not(new Or(one,two,three,four,five,seven,eight,nine))),
-            new Equivalence(seven, new Not(new Or(one,two,three,four,five,six,eight,nine))),
-            new Equivalence(eight, new Not(new Or(one,two,three,four,five,six,seven,nine))),
-            new Equivalence(nine, new Not(new Or(one,two,three,four,five,six,seven,eight))),
-            new Or(one,two,three,four,five,six,seven,eight,nine)
-        );
-        Rules = new And(base_props);
+        for (int j = 0; j <9 ; j++) {
+            for (int i = 0; i < 9 ; i++) {
+                for (int k = 0; k < 9; k++) {
+                    String tmp = ""+(i+1)+(j+1)+(k+1);
+                    props[i][j][k] = new PropositionalVariable(tmp);
+                }
+            }
+        }
+        rule_one= new And();
+        for (int j = 0; j <9 ; j++) {
+            for (int i = 0; i < 9 ; i++) {
+                List<BooleanFormula> tmp2 = List.of(
+                    props[i][j]
+                );
+
+                BooleanFormula tmp = new Or(tmp2);
+                rule_one = new And(rule_one,tmp);
+            }
+        }
+        System.out.println("Rule 1 : \n -----------------------\n"+ BooleanFormula.toCnf(rule_one));
+        BooleanFormula and_arrays_column[] = new BooleanFormula[9];
+        BooleanFormula and_arrays_rows[] = new BooleanFormula[9];
+        for (int j = 0; j <9 ; j++) {
+            for (int i = 0; i < 9 ; i++) {
+                for (int k = 0; k < 9; k++) {
+                    BooleanFormula tmp[] = new BooleanFormula[8];
+                    int index = 0;
+                    for (int l = 0; l < 9; l++) {
+                        if(k!=l){
+                            tmp[index] = new Implies(props[i][j][k],new Not(props[i][j][l]));
+                            index++;
+                        }
+                        continue;
+                    }
+                    and_arrays_rows[i]= new And(tmp);
+                }
+            }
+            and_arrays_column[j] = new And(and_arrays_rows);
+        }
+        rule_two = BooleanFormula.toCnf(new And(and_arrays_column));
+
+        System.out.println("Rule 2 : \n -----------------------\n"+ BooleanFormula.toCnf(rule_two));
+        and_arrays_column = new BooleanFormula[9];
+        and_arrays_rows = new BooleanFormula[9];
+        for (int j = 0; j < 9; j++) {
+            for (int i = 0; i < 9; i++) {
+                BooleanFormula tmp[] = new BooleanFormula[2];
+                for (int k = 0; k < 9; k++) {
+                    int index = 0;
+                    //row
+                    BooleanFormula tmp_line[] = new BooleanFormula[8];
+                    for (int l = 0; l < 9; l++) {
+                        if (i != l) {
+                            tmp_line[index] = new Or(new Not(props[i][j][k]), new Not(props[l][j][k]));
+                            index++;
+                        }
+                    }
+                    index = 0;
+
+                    tmp[0] = new Or(tmp_line);
+                    BooleanFormula tmp_column[] = new BooleanFormula[8];
+                    for (int l = 0; l < 9; l++) {
+                        if(j!=l){
+                            tmp_column[index] = new Implies(props[i][j][k],  new Not(props[i][l][k]));
+                            index++;
+                        }
+                    }
+                    tmp[1] = new Or(tmp_line);
+
+                }
+                and_arrays_rows[i] = new And(tmp);
+            }
+            and_arrays_column[j] = new And(and_arrays_rows);
+        }
+        rule_three = new And(and_arrays_column);
+
+        System.out.println("Rule 3 : \n -----------------------\n"+ BooleanFormula.toCnf(rule_three)); // technically rule 3 and 4
+        BooleanFormula columns[] = new BooleanFormula[9];
+        for (int j = 0; j < 9; j++) {
+            BooleanFormula rows[] = new BooleanFormula[9];
+            for (int i = 0; i < 9; i++) {
+                int x_init = i-(i%3);
+                int y_init = j-(j%3);
+                BooleanFormula square[] = new BooleanFormula[8];
+                int index = 0;
+                for (int k = y_init; k < y_init+3; k++) {
+                    for (int l = x_init; l < x_init+3; l++) {
+                        if(k==j & l==i){
+                            continue;
+                        }
+                        BooleanFormula implies[] = new BooleanFormula[9];
+                        for (int m = 0; m < 9; m++) {
+                            implies [m] = new Implies(props[i][j][m], new Not(props[l][k][m]));
+                        }
+                        square[index] = new And(implies);
+                        index++;
+
+                    }
+                }
+                rows[i] = new And(square);
+
+            }
+            columns[j] = new And(rows);
+        }
+        rule_four = new And(columns);
+        System.out.println("Rule 4 : \n -----------------------\n"+ BooleanFormula.toCnf(rule_four));
+
 
     }
 
-    public void solve(GameTable tb){
-        BooleanFormula[][] props = new BooleanFormula[9][9];
+    public void solve(GameTable tb) {
         char Values[][] = tb.getValues();
-        for(int j = 0; j<9; j++) {
+        int nb_values = 0;
+        for (int j = 0; j < 9; j++) {
             for (int i = 0; i < 9; i++) {
-                if(Values[i][j] != '#'){
-                    props = addConstraintSquare(props, i , j , Values[i][j]);
-                    props = addConstraintColumn(props, i , j , Values[i][j]);
-                    props = addConstraintRow(props, i , j , Values[i][j]);
+                if (Values[i][j] != '#') {
+                    nb_values++;
                 }
             }
         }
-        for(int j = 0; j<9; j++) {
+        BooleanFormula game_values[] = new BooleanFormula[nb_values];
+        int index = 0;
+        for (int j = 0; j < 9; j++) {
             for (int i = 0; i < 9; i++) {
-                props = addConstraintSquare(props, i , j , props[i][j]);
-                props = addConstraintRow(props, i , j , props[i][j]);
-                props = addConstraintColumn(props, i , j , props[i][j]);
+                if (Values[i][j] != '#') {
+                    int val = Character.getNumericValue(Values[i][j]);
+                    game_values[index] = props[i][j][val - 1];
+                    index++;
+                }
             }
-//            Ce block de code ajoute les contraintes de carre, lignes et column pour les cases vides, mais si on le decommente => stack overflow
         }
-        // prepare the solver to accept MAXVAR variables. MANDATORY for MAXSAT solving
-        String solved[][] = new String[9][9];
-        int MAXVAR = 1000000;
-        int NBCLAUSES = 500000;
-        for(int j = 0; j<9; j++) {
-            for (int i = 0; i < 9; i++) {
-                ISolver solver = SolverFactory.newDefault();
-                solver.newVar(MAXVAR);
-                System.out.println("-----------------------------");
-                props[i][j] = new And(props[i][j], Rules);
-                System.out.println(props[i][j]);
-                props[i][j]=BooleanFormula.toCnf(props[i][j]);
-                int[][] clauses = props[i][j].getClauses();
-                System.out.println("Clauses");
-                solver.setExpectedNumberOfClauses(NBCLAUSES);
-                Map<String,Integer> associations = props[i][j].getVariablesMap();
-                for (int k = 0; k < clauses.length; k++) {
-                    System.out.println(Arrays.toString(clauses[k]));
-                    try {
-                        solver.addClause(new VecInt(clauses[k]));
-                    } catch (ContradictionException e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                // solving
-                IProblem problem = solver;
-                try {
-                    if (problem.isSatisfiable()) {
-                        int[] model = problem.model();
-                        System.out.println("\nsolution");
-                        System.out.println(Arrays.toString(model));
-                        int key = getPositiveNumbers(model);
-                        int pos = -1;
-                        for (int k = 0; k<associations.values().toArray().length; k++){
-                            if (key == (int) associations.values().toArray()[k]){
-                                pos = k;
-                            }
-                        }
-                        System.out.println(associations.values()+" -> "+associations.keySet());
-                        solved[i][j]= (String) associations.keySet().toArray()[pos];
-
-
-
-                    } else {
-                        System.out.println("unsatisfiable");
-                    }
-                }catch (TimeoutException e) {
-                    e.printStackTrace();
-                }
-                System.out.println();
+        System.out.println("Rule 5 : \n -----------------------\n" + rule_five);
+        rule_five = BooleanFormula.toCnf(new And(game_values));
+        BooleanFormula big_formula = new And(rule_one,rule_two,rule_three,rule_four, rule_five);
+        System.out.println(rule_one);
+        System.out.println(rule_two);
+        System.out.println(rule_three);
+        System.out.println(rule_four);
+        System.out.println(rule_five);
+        System.out.println("Big formula \n" + big_formula);
+        BooleanFormula cnf= BooleanFormula.toCnf(big_formula);
+        solver = SolverFactory.newDefault();
+        solver.newVar(MAXVAR);
+        solver.setExpectedNumberOfClauses(NBCLAUSES);
+        int [][]clauses = cnf.getClauses();
+        for (int i=0; i<clauses.length; i++){
+            try {
+                solver.addClause(new VecInt(clauses[i]));
+            } catch (ContradictionException e) {
+                e.printStackTrace();
             }
         }
 
 
+        IProblem problem = solver;
+        ArrayList<Integer> posNum = new ArrayList<>();
+        try {
+            if (problem.isSatisfiable()) {
+                int[] model = problem.model();
+                getPositiveNumbers(model, posNum);
+                System.out.println(" length : " + posNum.size() + " " + posNum);
+            } else {
+                System.err.println(" Unsatisfiable");
+            }
+        } catch (TimeoutException e) {
+            e.printStackTrace();
 
-        System.out.println(" FInal soluton ------------------------------------------------------------");
-        for (int j = 0; j < 9 ; j++) {
-            for (int i = 0; i<9 ; i++) {
-                System.out.print(solved[i][j]+",");
+
+        }
+
+        Map<String,Integer> associations = cnf.getVariablesMap();
+        Set<String> keys =  associations.keySet();
+        Collection<Integer> clause_values = associations.values();
+        ArrayList<String> result_values = new ArrayList<>();
+        for (Integer val: posNum) {
+            index = 0;
+            for (Integer key: clause_values) {
+                if (key.equals(val)){
+                    result_values.add((String) keys.toArray()[index]);
+                }
+                index++;
+            }
+        }
+
+        System.out.println(result_values);
+        index=0;
+        char[][] solved_table= new char[9][9];
+        for (String r: result_values) {
+            solved_table[Character.getNumericValue(r.charAt(0))-1][Character.getNumericValue(r.charAt(1))-1] = r.charAt(2);
+        }
+
+        for (int j = 0; j < 9; j++) {
+            for (int i = 0; i < 9; i++) {
+                index++;
+                System.out.print(solved_table[i][j]+",");
             }
             System.out.println();
         }
-    }
+
+//
+//        for(String keys: associations.keySet()){
+//            System.out.println(" key = " + keys + " value = " + associations.get(keys));
+//        }
+//        System.err.println(" POSNUM size = " + posNum.size());
+//        for( int n: posNum){
+//            System.out.println(associations.keySet().toArray()[n]);
+//            t.set((((String)associations.keySet().toArray()[n]).charAt(0))-'0'-1,
+//                    ((String)associations.keySet().toArray()[n]).charAt(1)-'0'-1,
+//                    ((String)associations.keySet().toArray()[n]).charAt(2));
+//        }
 
 
+//        System.out.println(t);
 
-
-    public BooleanFormula[][] addConstraintSquare(BooleanFormula[][] props, int x, int y, char val){
-        int x_init = x-(x%3);
-        int y_init = y-(y%3);
-        for(int j = y_init; j< y_init+3; j++){
-            for(int i = x_init; i< x_init+3; i++){
-                if(i==x & j==y){
-                    props[i][j] = getProp(val);
-                    continue;
-                }
-                if(props[i][j]==null){
-                    props[i][j] = new Not(getProp(val));
-                    continue;
-                }
-                props[i][j] = new And(props[i][j], new Not(getProp(val)));
-            }
-        }
-        return props;
-    }
-    public BooleanFormula[][] addConstraintSquare(BooleanFormula[][] props, int x, int y, BooleanFormula constr){
-        int x_init = x-(x%3);
-        int y_init = y-(y%3);
-        for(int j = y_init; j< y_init+3; j++){
-            for(int i = x_init; i< x_init+3; i++){
-                if(i==x & j==y){
-                    continue;
-                }
-                if(props[i][j]==null){
-                    props[i][j] =  new Not(constr);
-                    continue;
-                }
-                props[i][j] = new And(props[i][j], new Not(constr));
-
-            }
-        }
-        return props;
 
     }
-
-    public BooleanFormula[][] addConstraintRow(BooleanFormula[][] props, int x, int y, char val){
-        int j = y;
-
-        for(int i = 0; i<9; i++){
-            if(i==x & j==y){
-                props[i][j] = getProp(val);
-                continue;
-            }
-            if(props[i][j]==null){
-                props[i][j] = new Not(getProp(val));
-                continue;
-            }
-            props[i][j] = new And(props[i][j], new Not(getProp(val)));
-        }
-        return props;
-    }
-    public BooleanFormula[][] addConstraintRow(BooleanFormula[][] props, int x, int y, BooleanFormula constr) {
-        int j = y;
-
-        for(int i = 0; i<9; i++){
-            if(i==x & j==y){
-                continue;
-            }
-            if(props[i][j]==null){
-                props[i][j] =  new Not(constr);
-
-                continue;
-            }
-            props[i][j] = new And(props[i][j], new Not(constr));
-
-
-        }
-        return props;
-    }
-    public BooleanFormula[][] addConstraintColumn(BooleanFormula[][] props, int x, int y, char val){
-        int i = x;
-
-        for(int j =0 ; j< 9; j++){
-            if(i==x & j==y){
-                props[i][j] = getProp(val);
-                continue;
-            }
-            if(props[i][j]==null){
-                props[i][j] = new Not(getProp(val));
-                continue;
-            }
-            props[i][j] = new And(props[i][j], new Not(getProp(val)));
-
-        }
-        return props;
-    }
-    public BooleanFormula[][] addConstraintColumn(BooleanFormula[][] props, int x, int y, BooleanFormula constr) {
-        int i = x;
-
-        for(int j =0 ; j< 9; j++){
-            if(i==x & j==y){
-                continue;
-            }
-            if(props[i][j]==null){
-                props[i][j] =  new Not(constr);
-                continue;
-            }
-            props[i][j] = new And(props[i][j], new Not(constr));
-
-
-        }
-        return props;
-    }
-        public PropositionalVariable getProp(char val){
-        switch (val){
-            case '1':
-                return this.one;
-            case '2':
-                return this.two;
-            case '3':
-                return this.three;
-            case '4':
-                return this.four;
-            case '5':
-                return this.five;
-            case '6':
-                return this.six;
-            case '7':
-                return this.seven;
-            case '8':
-                return this.eight;
-            case '9':
-                return this.nine;
-            default:
-                return null;
-        }
-    }
-    public static int getPositiveNumbers(int[] model){
-
+    public static void getPositiveNumbers(int[] model, ArrayList<Integer> posNum){
         for (int i = 0; i < model.length; i++) {
             if(model[i]>0){
-                return model[i];
+                posNum.add(model[i]);
             }
         }
-        return -10;
     }
+
+
+
 }
